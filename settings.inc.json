@@ -1,0 +1,6 @@
+{
+    "DISCORD_BOT_TOKEN" : "YOUR_DISCORD_BOT_TOKEN",
+	"LANGUAGE_PATH": "ko_kr.json",
+	"DB_PATH": "db.json",
+    "SEARCH_RESULT_LIMIT": 20
+}

@@ -1,2 +1,2 @@
 # KKuTu-on-Discord-real
-KKuTu on Discord(real) but I don't know when I'll do it.
+> 디스코드로 놀자! KKuTu on Discord
