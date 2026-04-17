@@ -8,7 +8,8 @@ TODO:
 - [ ] 게임 상태 관리
 - [ ] 사용자 인터랙션 처리
 - [ ] 에러 핸들링 및 예외 처리
-- [ ] 추가 명령어 및 기능 구현
+- 추가 명령어 및 기능 구현
+- - 언어 추가
 - [ ] 테스트 및 디버깅
 
 db.json 구조:
@@ -124,6 +125,7 @@ import datetime
 import random
 
 from util.db import SearchDB
+from util.langutil import check_language_keys, getlang
 
 import discord
 from discord.ext import commands
@@ -133,7 +135,7 @@ intents = discord.Intents.default()
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-global SETTINGS, DB_PATH, LANGUAGE_PATH, SEARCH_LIMIT, WHAT_IS_THIS_SETTING, WHAT_IS_THIS_LIST, WHAT_IS_THIS_LIST2
+global SETTINGS, DB_PATH, LANGUAGE_PATH, SEARCH_LIMIT, WHAT_IS_THIS_SETTING, WHAT_IS_THIS_LIST, WHAT_IS_THIS_LIST2, LANGUAGE_DICT
 with open("settings.json", "r", encoding="utf-8") as f:
 	SETTINGS = json.load(f)
 	
@@ -144,10 +146,22 @@ WHAT_IS_THIS_SETTING = SETTINGS.get("WHAT_IS_THIS_SETTING", False)
 WHAT_IS_THIS_LIST = SETTINGS.get("WHAT_IS_THIS_LIST", [])
 WHAT_IS_THIS_LIST2 = SETTINGS.get("WHAT_IS_THIS_LIST2", [])
 
+missing_keys = check_language_keys(LANGUAGE_PATH, "util/lang_keys.json")
+if missing_keys:
+	print("Missing language keys:")
+	for key in missing_keys:
+		print(f" - {key}")
+		exit(1)
+else:
+	with open(LANGUAGE_PATH, "r", encoding="utf-8") as f:
+		LANGUAGE_DICT = json.load(f)
+	
+	langpack_info = LANGUAGE_DICT.get("langpack-info", {})
+	print("All language keys are present.")
+	print(f"Language Pack: {langpack_info.get('langpack-name', 'Unknown')}")
+	print(f"Description: {langpack_info.get('langpack-description', 'No description available')}")
+
 def listwords(word: list):
-	# add 1 to 20 on word but cut from 20
-	# example : ["asdf", "asdfasdf"]
-	# result : "1. asdf\n2. asdfasdf\n"
 	result = ""
 	for i, w in enumerate(word[:SEARCH_LIMIT + 1], start=1):
 		result += f"{i}. {w}\n"
@@ -158,39 +172,35 @@ async def on_ready():
 	print(f"Logged in as {bot.user} (ID: {bot.user.id})")
 
 
-@bot.slash_command(name="ping", description="봇 응답 속도 확인")
+@bot.slash_command(name="ping", description=getlang(LANGUAGE_DICT, "CheckBotLatencycmd"))
 async def ping(ctx: discord.ApplicationContext):
 	if not WHAT_IS_THIS_SETTING:
-		await ctx.respond(f"🏓 Pong!\n응답 시간: **{round(bot.latency * 1000)}ms**\n")
+		latency = round(bot.latency * 1000)
+		embed = discord.Embed(title=getlang(LANGUAGE_DICT, "CheckBotLatencyTitle"), description=getlang(LANGUAGE_DICT, "CheckBotLatencyDescription").format(latency=latency), color=discord.Color.blue())
+		await ctx.respond(embed=embed)
 	else:
 		embed = f"{random.choice(WHAT_IS_THIS_LIST2)}\n{random.choice(WHAT_IS_THIS_LIST)}\n-# {round(bot.latency * 1000)}ms"
 		await ctx.respond(embed)
-
-
-@bot.slash_command(name="hello", description="인사 예시 슬래시 명령어")
-async def hello(ctx: discord.ApplicationContext):
-	embed = discord.Embed(title="👋 인사", description=f"안녕하세요, {ctx.author.mention}님!", color=discord.Color.green())
-	await ctx.respond(embed=embed)
 	
 @bot.slash_command(name="echo", description="입력한 메시지를 그대로 반환하는 슬래시 명령어")
 async def echo(ctx: discord.ApplicationContext, message: str):
 	embed = discord.Embed(title="🔊 에코", description=message, color=discord.Color.purple())
-	await ctx.respond(embed=embed)
+	await ctx.respond(embed=embed) # Not Used, Just for testing
 	
 
 
-@bot.slash_command(name="game_start", description="게임 시작 명령어")
+@bot.slash_command(name="game_start", description=getlang(LANGUAGE_DICT, "GameStartcmd"))
 async def start_game(ctx: discord.ApplicationContext):
-	embed = discord.Embed(title="🎮 게임 시작", description="게임을 시작하시겠습니까?", color=discord.Color.orange())
+	embed = discord.Embed(title=getlang(LANGUAGE_DICT, "GameStartTitle"), description=getlang(LANGUAGE_DICT, "GameStartDescription"), color=discord.Color.orange())
 	await ctx.respond(embed=embed)
 	
-@bot.slash_command(name="submit", description="입력 명령어")
+@bot.slash_command(name="submit", description=getlang(LANGUAGE_DICT, "Submitcmd"))
 async def input_command(ctx: discord.ApplicationContext, user_input: str):
-	embed = discord.Embed(title="📝 입력", description=f"**입력 내용:**\n{user_input}", color=discord.Color.yellow())
+	embed = discord.Embed(title=getlang(LANGUAGE_DICT, "SubmitTitle"), description=getlang(LANGUAGE_DICT, "SubmitDescription").format(message=user_input), color=discord.Color.yellow())
 	await ctx.respond(embed=embed)
 
 
-@bot.slash_command(name="search", description="단어 검색 명령어 (정규식 지원)")
+@bot.slash_command(name="search", description=getlang(LANGUAGE_DICT, "Searchcmd"))
 async def search_command(
 	ctx: discord.ApplicationContext,
 	query: str,
@@ -210,21 +220,31 @@ async def search_command(
 		
 		if results:
 			result_text = listwords([word['_id'] for word in results])
-			embed = discord.Embed(title=f"🔍 \"{query}\" 검색 결과", description=f"\n{result_text}", color=discord.Color.blue(), timestamp=datetime.datetime.now())
-			footer_text = f"총 {len(results)}개 결과"
+			embed = discord.Embed(
+				title=getlang(LANGUAGE_DICT, "SearchTitle").format(query=query),
+				description=getlang(LANGUAGE_DICT, "SearchDescription").format(results=result_text),
+				color=discord.Color.blue(),
+				timestamp=datetime.datetime.now(),
+			)
+			footer_text = getlang(LANGUAGE_DICT, "SearchFooter").format(total=len(results))
 			if theme:
-				footer_text += f" | theme: {theme}"
+				footer_text += " " + getlang(LANGUAGE_DICT, "SearchthemeFooter").format(theme=theme)
 			embed.set_footer(text=footer_text)
 			await ctx.respond(embed=embed)
 		else:
-			embed = discord.Embed(title=f"🔍 \"{query}\" 검색 결과", description="검색 결과가 없습니다.", color=discord.Color.red(), timestamp=datetime.datetime.now())
-			footer_text = "총 0개 결과"
-			# if theme:
-			# 	footer_text += f" | theme: {theme}"
+			embed = discord.Embed(
+				title=getlang(LANGUAGE_DICT, "SearchTitle").format(query=query),
+				description=getlang(LANGUAGE_DICT, "SearchNotfound"),
+				color=discord.Color.red(),
+				timestamp=datetime.datetime.now(),
+			)
+			footer_text = getlang(LANGUAGE_DICT, "SearchFooter").format(total=0)
+			if theme:
+				footer_text += " " + getlang(LANGUAGE_DICT, "SearchthemeFooter").format(theme=theme)
 			embed.set_footer(text=footer_text)
 			await ctx.respond(embed=embed)
 	except Exception as e:
-		embed = discord.Embed(title="❌ 오류", description=f"오류 발생: {str(e)}", color=discord.Color.red())
+		embed = discord.Embed(title=getlang(LANGUAGE_DICT, "HasErrorTitle"), description=getlang(LANGUAGE_DICT, "HasError").format(error=str(e)), color=discord.Color.red())
 		await ctx.respond(embed=embed)
 
 def main():

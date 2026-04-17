@@ -1,0 +1,23 @@
+{
+    "langpack-info": {
+        "langpack-name": "Nya pack",
+        "langpack-description": "TNX TO discord - rhdiddl"
+    },
+    "CheckBotLatencycmd": "봇 응답 속도 확인다냥",
+    "CheckBotLatencyTitle": "🏓 퐁냐!",
+    "CheckBotLatencyDescription": "응답 시간: **{latency}ms**",
+    "GameStartcmd": "게임 시작 명령어다냥",
+    "GameStartTitle": "게임 시작이다냥",
+    "GameStartDescription": "게임을 시작하시겠습까냥?",
+    "Submitcmd": "입력한다냥",
+    "SubmitTitle": "📝 입력",
+    "SubmitDescription": "**입력 내용이다냥:**\n{message}",
+    "Searchcmd": "검색한다냥",
+    "SearchTitle": "🔍 \"{query}\" 검색 결과다냥",
+    "SearchDescription": "{results}",
+    "SearchNotfound": "없다냥",
+    "SearchFooter": "총 {total}냥이다냥",
+    "SearchthemeFooter": "| theme: {theme}",
+    "HasErrorTitle": "❌ 오류다냥!",
+    "HasError": "냥냥: {error}"
+}

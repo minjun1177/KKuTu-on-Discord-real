@@ -1,0 +1,19 @@
+[
+    "CheckBotLatencycmd",
+    "CheckBotLatencyTitle",
+    "CheckBotLatencyDescription",
+    "GameStartcmd",
+    "GameStartTitle",
+    "GameStartDescription",
+    "Submitcmd",
+    "SubmitTitle",
+    "SubmitDescription",
+    "Searchcmd",
+    "SearchTitle",
+    "SearchDescription",
+    "SearchNotfound",
+    "SearchFooter",
+    "SearchthemeFooter",
+    "HasErrorTitle",
+    "HasError"
+]

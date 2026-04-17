@@ -1,3 +1,23 @@
 {
-    
+    "langpack-info": {
+        "langpack-name": "Korean pack",
+        "langpack-description": "한글!"
+    },
+    "CheckBotLatencycmd": "봇 응답 속도 확인",
+    "CheckBotLatencyTitle": "🏓 Pong!",
+    "CheckBotLatencyDescription": "응답 시간: **{latency}ms**",
+    "GameStartcmd": "게임 시작 명령어",
+    "GameStartTitle": "게임 시작",
+    "GameStartDescription": "게임을 시작하시겠습니까?",
+    "Submitcmd": "입력 명령어",
+    "SubmitTitle": "📝 입력",
+    "SubmitDescription": "**입력 내용:**\n{message}",
+    "Searchcmd": "검색 명령어",
+    "SearchTitle": "🔍 \"{query}\" 검색 결과",
+    "SearchDescription": "{results}",
+    "SearchNotfound": "검색 결과가 없습니다.",
+    "SearchFooter": "총 {total}개 결과",
+    "SearchthemeFooter": "| theme: {theme}",
+    "HasErrorTitle": "❌ 오류 발생",
+    "HasError": "오류 발생: {error}"
 }
