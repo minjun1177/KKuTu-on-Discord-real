@@ -14,6 +14,22 @@
     "SearchNotfound",
     "SearchFooter",
     "SearchthemeFooter",
+    "ThemeSearchcmd",
+    "ThemeSearchTitle",
+    "ThemeSearchDescription",
+    "ThemeSearchNotfound",
+    "ThemeSearchmeanNotfound",
+    "ThemeSearchfieldNotfound",
+    "ThemeTypeNameMap",
+    "ThemeFlagNameMap",
+    "ThemeSearchtype",
+    "ThemeSearchtheme",
+    "ThemeSearchflag",
+
+    "Helpcmd",
+    "HelpTitle",
+    "HelpDescription",
+
     "HasErrorTitle",
     "HasError"
 ]

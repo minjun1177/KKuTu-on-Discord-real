@@ -9,7 +9,7 @@ TODO:
 - [ ] 사용자 인터랙션 처리
 - [ ] 에러 핸들링 및 예외 처리
 - 추가 명령어 및 기능 구현
-- - 언어 추가
+- - [ ] 언어 추가
 - [ ] 테스트 및 디버깅
 
 db.json 구조:
@@ -123,43 +123,57 @@ import os
 import re
 import datetime
 import random
+import logging
+import sys
 
-from util.db import SearchDB
+from util.db import SearchDB, Getmean
+from util.meanutil import format_mean_text, format_theme_text, format_type_text, format_flag_text
 from util.langutil import check_language_keys, getlang
 
 import discord
 from discord.ext import commands
 
 
+logging.basicConfig(
+	level=logging.INFO,
+	format='[%(asctime)s] %(message)s',
+	datefmt='%H:%M:%S',
+	stream=sys.stdout,
+)
+logger = logging.getLogger(__name__)
+
+
 intents = discord.Intents.default()
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-global SETTINGS, DB_PATH, LANGUAGE_PATH, SEARCH_LIMIT, WHAT_IS_THIS_SETTING, WHAT_IS_THIS_LIST, WHAT_IS_THIS_LIST2, LANGUAGE_DICT
+global SETTINGS, DB_PATH, LANGUAGE_PATH, SEARCH_LIMIT, WHAT_IS_THIS_SETTING, WHAT_IS_THIS_LIST, WHAT_IS_THIS_LIST2, LANGUAGE_DICT, PGSQL_CONFIG, USE_PGSQL
 with open("settings.json", "r", encoding="utf-8") as f:
 	SETTINGS = json.load(f)
 	
 DB_PATH = SETTINGS.get("DB_PATH", "db.json")
 LANGUAGE_PATH = SETTINGS.get("LANGUAGE_PATH", "ko_kr.json")
 SEARCH_LIMIT = SETTINGS.get("SEARCH_RESULT_LIMIT", 20)
+PGSQL_CONFIG = SETTINGS.get("PGSQL_CONFIG", {})
+USE_PGSQL = bool(PGSQL_CONFIG.get("USE_PGSQL", False))
 WHAT_IS_THIS_SETTING = SETTINGS.get("WHAT_IS_THIS_SETTING", False)
 WHAT_IS_THIS_LIST = SETTINGS.get("WHAT_IS_THIS_LIST", [])
 WHAT_IS_THIS_LIST2 = SETTINGS.get("WHAT_IS_THIS_LIST2", [])
 
 missing_keys = check_language_keys(LANGUAGE_PATH, "util/lang_keys.json")
 if missing_keys:
-	print("Missing language keys:")
+	logger.error("Missing language keys:")
 	for key in missing_keys:
-		print(f" - {key}")
+		logger.error(f" - {key}")
 		exit(1)
 else:
 	with open(LANGUAGE_PATH, "r", encoding="utf-8") as f:
 		LANGUAGE_DICT = json.load(f)
 	
 	langpack_info = LANGUAGE_DICT.get("langpack-info", {})
-	print("All language keys are present.")
-	print(f"Language Pack: {langpack_info.get('langpack-name', 'Unknown')}")
-	print(f"Description: {langpack_info.get('langpack-description', 'No description available')}")
+	logger.info("All language keys are present.")
+	logger.info(f"Language Pack: {langpack_info.get('langpack-name', 'Unknown')}")
+	logger.info(f"Description: {langpack_info.get('langpack-description', 'No description available')}")
 
 def listwords(word: list):
 	result = ""
@@ -169,35 +183,51 @@ def listwords(word: list):
 
 @bot.event
 async def on_ready():
-	print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+	logger.info(f"Logged in as {bot.user} (ID: {bot.user.id})")
 
 
 @bot.slash_command(name="ping", description=getlang(LANGUAGE_DICT, "CheckBotLatencycmd"))
 async def ping(ctx: discord.ApplicationContext):
-	if not WHAT_IS_THIS_SETTING:
-		latency = round(bot.latency * 1000)
-		embed = discord.Embed(title=getlang(LANGUAGE_DICT, "CheckBotLatencyTitle"), description=getlang(LANGUAGE_DICT, "CheckBotLatencyDescription").format(latency=latency), color=discord.Color.blue())
-		await ctx.respond(embed=embed)
-	else:
-		embed = f"{random.choice(WHAT_IS_THIS_LIST2)}\n{random.choice(WHAT_IS_THIS_LIST)}\n-# {round(bot.latency * 1000)}ms"
-		await ctx.respond(embed)
+	try:
+		if not ctx.response.is_done():
+			await ctx.defer()
+
+		if not WHAT_IS_THIS_SETTING:
+			latency = round(bot.latency * 1000)
+			embed = discord.Embed(title=getlang(LANGUAGE_DICT, "CheckBotLatencyTitle"), description=getlang(LANGUAGE_DICT, "CheckBotLatencyDescription").format(latency=latency), color=discord.Color.blue())
+			await ctx.followup.send(embed=embed)
+		else:
+			embed = f"{random.choice(WHAT_IS_THIS_LIST2)}\n{random.choice(WHAT_IS_THIS_LIST)}\n-# {round(bot.latency * 1000)}ms"
+			await ctx.followup.send(embed)
+	except Exception as e:
+		logger.exception(f"ping command failed: error={e}")
 	
 @bot.slash_command(name="echo", description="입력한 메시지를 그대로 반환하는 슬래시 명령어")
 async def echo(ctx: discord.ApplicationContext, message: str):
-	embed = discord.Embed(title="🔊 에코", description=message, color=discord.Color.purple())
+	embed = discord.Embed(title="🔊 에코", description=f"# {message}", color=discord.Color.purple())
 	await ctx.respond(embed=embed) # Not Used, Just for testing
 	
 
 
 @bot.slash_command(name="game_start", description=getlang(LANGUAGE_DICT, "GameStartcmd"))
 async def start_game(ctx: discord.ApplicationContext):
-	embed = discord.Embed(title=getlang(LANGUAGE_DICT, "GameStartTitle"), description=getlang(LANGUAGE_DICT, "GameStartDescription"), color=discord.Color.orange())
-	await ctx.respond(embed=embed)
+	try:
+		if not ctx.response.is_done():
+			await ctx.defer()
+		embed = discord.Embed(title=getlang(LANGUAGE_DICT, "GameStartTitle"), description=getlang(LANGUAGE_DICT, "GameStartDescription"), color=discord.Color.orange())
+		await ctx.followup.send(embed=embed)
+	except Exception as e:
+		logger.exception(f"start_game command failed: error={e}")
 	
 @bot.slash_command(name="submit", description=getlang(LANGUAGE_DICT, "Submitcmd"))
 async def input_command(ctx: discord.ApplicationContext, user_input: str):
-	embed = discord.Embed(title=getlang(LANGUAGE_DICT, "SubmitTitle"), description=getlang(LANGUAGE_DICT, "SubmitDescription").format(message=user_input), color=discord.Color.yellow())
-	await ctx.respond(embed=embed)
+	try:
+		if not ctx.response.is_done():
+			await ctx.defer()
+		embed = discord.Embed(title=getlang(LANGUAGE_DICT, "SubmitTitle"), description=getlang(LANGUAGE_DICT, "SubmitDescription").format(message=user_input), color=discord.Color.yellow())
+		await ctx.followup.send(embed=embed)
+	except Exception as e:
+		logger.exception(f"submit command failed: error={e}")
 
 
 @bot.slash_command(name="search", description=getlang(LANGUAGE_DICT, "Searchcmd"))
@@ -208,7 +238,11 @@ async def search_command(
 	theme: str = "",
 	limit: int = SEARCH_LIMIT
 ):
+	response_sent = False
 	try:
+		if not ctx.response.is_done():
+			await ctx.defer()
+
 		results = SearchDB(
 			"kkutu_ko",
 			query,
@@ -216,6 +250,8 @@ async def search_command(
 			db_path=DB_PATH,
 			dblimit=limit,
 			theme=theme if theme else None,
+			use_pgsql=USE_PGSQL,
+			pgsql_config=PGSQL_CONFIG,
 		)
 		
 		if results:
@@ -230,7 +266,8 @@ async def search_command(
 			if theme:
 				footer_text += " " + getlang(LANGUAGE_DICT, "SearchthemeFooter").format(theme=theme)
 			embed.set_footer(text=footer_text)
-			await ctx.respond(embed=embed)
+			await ctx.followup.send(embed=embed)
+			response_sent = True
 		else:
 			embed = discord.Embed(
 				title=getlang(LANGUAGE_DICT, "SearchTitle").format(query=query),
@@ -242,10 +279,82 @@ async def search_command(
 			if theme:
 				footer_text += " " + getlang(LANGUAGE_DICT, "SearchthemeFooter").format(theme=theme)
 			embed.set_footer(text=footer_text)
-			await ctx.respond(embed=embed)
+			await ctx.followup.send(embed=embed)
+			response_sent = True
 	except Exception as e:
-		embed = discord.Embed(title=getlang(LANGUAGE_DICT, "HasErrorTitle"), description=getlang(LANGUAGE_DICT, "HasError").format(error=str(e)), color=discord.Color.red())
-		await ctx.respond(embed=embed)
+		logger.exception(f"search_command failed: query={query}, error={e}")
+		if not response_sent:
+			embed = discord.Embed(title=getlang(LANGUAGE_DICT, "HasErrorTitle"), description=getlang(LANGUAGE_DICT, "HasError").format(error=str(e)), color=discord.Color.red())
+			try:
+				await ctx.followup.send(embed=embed)
+			except Exception as followup_error:
+				logger.exception(f"failed to send search error followup: {followup_error}")
+
+@bot.slash_command(name="mean", description=getlang(LANGUAGE_DICT, "ThemeSearchcmd"))
+async def search_mean_command(ctx: discord.ApplicationContext, query: str):
+	respones_sent = False
+	try:
+		if not ctx.response.is_done():
+			await ctx.defer()
+		result = Getmean(
+			"kkutu_ko",
+			query,
+			db_path=DB_PATH,
+			use_pgsql=USE_PGSQL,
+			pgsql_config=PGSQL_CONFIG,
+		)
+		if result:
+			result_text = format_mean_text(
+				result.get("mean"),
+				result.get("theme"),
+				getlang(LANGUAGE_DICT, "ThemeSearchmeanNotfound"),
+			)
+			fallback_text = getlang(LANGUAGE_DICT, "ThemeSearchfieldNotfound")
+			type_name_map = LANGUAGE_DICT.get("ThemeTypeNameMap", {})
+			flag_name_map = LANGUAGE_DICT.get("ThemeFlagNameMap", {})
+			type_text = format_type_text(result.get("type"), type_name_map, fallback_text)
+			theme_text = format_theme_text(result.get("theme"), fallback_text)
+			flag_text = format_flag_text(result.get("flag"), flag_name_map, fallback_text)
+			embed = discord.Embed(
+				title=getlang(LANGUAGE_DICT, "ThemeSearchTitle").format(query=query),
+				description=result_text,
+				color=discord.Color.yellow(),
+				timestamp=datetime.datetime.now(),
+			)
+			embed.add_field(name=getlang(LANGUAGE_DICT, "ThemeSearchtype").format(type=type_text), value="\u200b", inline=True)
+			embed.add_field(name=getlang(LANGUAGE_DICT, "ThemeSearchtheme").format(theme=theme_text), value="\u200b", inline=True)
+			embed.add_field(name=getlang(LANGUAGE_DICT, "ThemeSearchflag").format(flag=flag_text), value="\u200b", inline=True)
+			await ctx.followup.send(embed=embed)
+			respones_sent = True
+		else:
+			embed = discord.Embed(
+				title=getlang(LANGUAGE_DICT, "ThemeSearchTitle").format(query=query),
+				description=getlang(LANGUAGE_DICT, "ThemeSearchmeanNotfound"),
+				color=discord.Color.red(),
+				timestamp=datetime.datetime.now(),
+			)
+			await ctx.followup.send(embed=embed)
+			respones_sent = True
+	except Exception as e:
+		logger.exception(f"search_command failed: query={query}, error={e}")
+		if not respones_sent:
+			embed = discord.Embed(title=getlang(LANGUAGE_DICT, "HasErrorTitle"), description=getlang(LANGUAGE_DICT, "HasError").format(error=str(e)), color=discord.Color.red())
+			try:
+				await ctx.followup.send(embed=embed)
+			except Exception as followup_error:
+				logger.exception(f"failed to send search error followup: {followup_error}")
+
+@bot.slash_command(name="help", description=getlang(LANGUAGE_DICT, "Helpcmd")) # 나중에
+async def help_command(ctx: discord.ApplicationContext):
+	embed = discord.Embed(title=getlang(LANGUAGE_DICT, "HelpTitle"), description=getlang(LANGUAGE_DICT, "HelpDescription"), color=discord.Color.green())
+	embed.add_field(name="/ping", value=getlang(LANGUAGE_DICT, "CheckBotLatencycmd"), inline=False)
+	# embed.add_field(name="/echo [message]", value="입력한 메시지를 그대로 반환하는 명령어입니다.", inline=False)
+	embed.add_field(name="/game_start", value=getlang(LANGUAGE_DICT, "GameStartcmd"), inline=False)
+	embed.add_field(name="/submit [message]", value=getlang(LANGUAGE_DICT, "Submitcmd"), inline=False)
+	embed.add_field(name="/search [query] [is_regex] [theme] [limit]", value=getlang(LANGUAGE_DICT, "Searchcmd"), inline=False)
+	embed.add_field(name="/mean [query]", value=getlang(LANGUAGE_DICT, "ThemeSearchcmd"), inline=False)
+	embed.set_footer(text="By minjun1177・<https://github.com/minjun1177/KKuTu-on-Discord-real>")
+	await ctx.respond(embed=embed)
 
 def main():
 	with open("settings.json", "r", encoding="utf-8") as f:

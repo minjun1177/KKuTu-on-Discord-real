@@ -1,1 +1,6 @@
 settings.json
+bot.log
+db.json
+db.baek.json
+util/injeong_list.json
+util/__pycache__/

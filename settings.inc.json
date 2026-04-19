@@ -2,5 +2,16 @@
     "DISCORD_BOT_TOKEN" : "YOUR_DISCORD_BOT_TOKEN",
 	"LANGUAGE_PATH": "ko_kr.json",
 	"DB_PATH": "db.json",
-    "SEARCH_RESULT_LIMIT": 20
+    "PGSQL_CONFIG": {
+        "USE_PGSQL": false,
+        "host": "localhost",
+        "port": 5432,
+        "user": "postgres",
+        "password": "YOUR_PGSQL_PASSWORD",
+        "database": "main",
+        "ADD_HIT": false
+    },
+    "SEARCH_RESULT_LIMIT": 20,
+
+    "VERSION": "1.0.0-beta"
 }
